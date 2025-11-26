@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSL Presentation Mindmap</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            overflow: hidden;
+        }
+        #mindmap-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .node circle {
+            fill: #fff;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .node text {
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+        }
+        .link {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 1.5px;
+            transition: all 0.5s ease;
+        }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="mindmap-container"></div>
+    
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#06b6d4"></div>MSL Dual-Action Approach</div>
+        <div class="legend-item"><div class="dot" style="background:#8b5cf6"></div>Applied Methodology</div>
+        <div class="legend-item"><div class="dot" style="background:#ef4444"></div>Engineering Challenges</div>
+        <div class="legend-item"><div class="dot" style="background:#22c55e"></div>Feasibility & Value (Green)</div>
+    </div>
+
+    <script>
+        // --- Data Structure based on MSL_Presentation_Script.md ---
+        const treeData = {
+            name: "MSL Alternative Solution",
+            color: "#1e293b", // Slate
+            children: [
+                {
+                    name: "Executive Summary",
+                    color: "#64748b",
+                    children: [
+                        { name: "Baseline: Traditional Ventilation" },
+                        { name: "Challenge: Vertical Constraints" },
+                        { name: "Proposal: In-Situ Treatment" }
+                    ]
+                },
+                {
+                    name: "Dual-Action Approach",
+                    color: "#06b6d4", // Cyan
+                    children: [
+                        { 
+                            name: "1. Surface Irradiation",
+                            children: [
+                                { name: "Ceiling UVC Emitters" },
+                                { name: "Target: Bacteria on Bins/Floors" }
+                            ]
+                        },
+                        { 
+                            name: "2. Air Disinfection",
+                            children: [
+                                { name: "Ductless Filtration Module" },
+                                { 
+                                    name: "Synergistic Protocol",
+                                    children: [
+                                        { name: "MERV 6 Filter (Removes Shielding)" },
+                                        { name: "UVC 253.7nm (Neutralizes Pathogens)" }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: "Applied Methodology",
+                    color: "#8b5cf6", // Purple
+                    children: [
+                        {
+                            name: "Residential Floors (Sierra Valley)",
+                            children: [
+                                { name: "Recirculating Model" },
+                                { name: "15 ACH Scrubbing" },
+                                { name: "Benefit: No Vertical Riser" }
+                            ]
+                        },
+                        {
+                            name: "MRF (Alveo)",
+                            children: [
+                                { name: "Hybrid Model" },
+                                { name: "Negative Pressure" },
+                                { name: "Sterilized Exhaust (Pre-Discharge)" }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    name: "Engineering Challenges",
+                    color: "#ef4444", // Red/Pinkish
+                    children: [
+                        {
+                            name: "Vertical Dynamics",
+                            children: [
+                                { name: "Stack Effect (Thermal Buoyancy)" },
+                                { name: "Result: Dead Zones" }
+                            ]
+                        },
+                        {
+                            name: "Horizontal Dynamics",
+                            children: [
+                                { name: "Wind Dam Effect" },
+                                { name: "Risks: Backdrafts & Staining" }
+                            ]
+                        },
+                        { name: "Biological: Bio-Film Accumulation" }
+                    ]
+                },
+                {
+                    name: "Feasibility & Value",
+                    color: "#22c55e", // Green (MSL Brand)
+                    children: [
+                        {
+                            name: "Compliance (ASHRAE 62.1)",
+                            children: [
+                                { name: "Sec 6.3: IAQ Procedure" },
+                                { name: "Sec 5.13: Recirculation Permitted" }
+                            ]
+                        },
+                        {
+                            name: "Economic Value",
+                            children: [
+                                { name: "Space Recovery (Net Sellable Area)" },
+                                { name: "Reduced CAPEX/OPEX" },
+                                { name: "Decentralized Risk Mitigation" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // --- D3.js Visualization ---
+        const margin = {top: 20, right: 90, bottom: 30, left: 90},
+              width = window.innerWidth - margin.left - margin.right,
+              height = window.innerHeight - margin.top - margin.bottom;
+
+        const svg = d3.select("#mindmap-container").append("svg")
+            .attr("width", width + margin.right + margin.left)
+            .attr("height", height + margin.top + margin.bottom)
+            .call(d3.zoom().on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            }))
+            .append("g")
+            .attr("id", "diagram-g")
+            .attr("transform", "translate(" + margin.left + "," + height/2 + ")"); 
+
+        const g = d3.select("#diagram-g");
+
+        let i = 0,
+            duration = 750,
+            root;
+
+        // Declares a tree layout and assigns the size
+        const treeMap = d3.tree().size([height, width]);
+
+        // Assigns parent, children, height, depth
+        root = d3.hierarchy(treeData, function(d) { return d.children; });
+        root.x0 = height / 2;
+        root.y0 = 0;
+
+        // Initialize
+        update(root);
+
+        function update(source) {
+
+            // Assigns the x and y position for the nodes
+            const treeData = treeMap(root);
+
+            // Compute the new tree layout
+            const nodes = treeData.descendants(),
+                  links = treeData.descendants().slice(1);
+
+            // Normalize for fixed-depth
+            nodes.forEach(function(d){ d.y = d.depth * 220});
+
+            // ****************** Nodes section ******************
+
+            // Update the nodes...
+            const node = g.selectAll('g.node')
+                .data(nodes, function(d) {return d.id || (d.id = ++i); });
+
+            // Enter any new modes at the parent's previous position.
+            const nodeEnter = node.enter().append('g')
+                .attr('class', 'node')
+                .attr("transform", function(d) {
+                    return "translate(" + source.y0 + "," + source.x0 + ")";
+                })
+                .on('click', click);
+
+            // Add Circle for the nodes
+            nodeEnter.append('circle')
+                .attr('class', 'node')
+                .attr('r', 1e-6)
+                .style("fill", function(d) {
+                    return d._children ? (d.data.color || "#fff") : "#fff";
+                })
+                .style("stroke", function(d) {
+                    let current = d;
+                    while (current.depth > 1) current = current.parent;
+                    return current.data.color || "#555";
+                });
+
+            // Add labels for the nodes
+            nodeEnter.append('text')
+                .attr("dy", ".35em")
+                .attr("x", function(d) {
+                    return d.children || d._children ? -13 : 13;
+                })
+                .attr("text-anchor", function(d) {
+                    return d.children || d._children ? "end" : "start";
+                })
+                .text(function(d) { return d.data.name; });
+
+            // UPDATE
+            const nodeUpdate = nodeEnter.merge(node);
+
+            // Transition to the proper position for the node
+            nodeUpdate.transition()
+                .duration(duration)
+                .attr("transform", function(d) { 
+                    return "translate(" + d.y + "," + d.x + ")";
+                });
+
+            // Update the node attributes and style
+            nodeUpdate.select('circle.node')
+                .attr('r', 10)
+                .style("fill", function(d) {
+                    let current = d;
+                    while (current.depth > 1) current = current.parent;
+                    return d._children ? (current.data.color || "#555") : "#fff";
+                })
+                .style("stroke", function(d) {
+                    let current = d;
+                    while (current.depth > 1) current = current.parent;
+                    return current.data.color || "#555";
+                });
+
+
+            // ****************** Links section ******************
+
+            // Update the links...
+            const link = g.selectAll('path.link')
+                .data(links, function(d) { return d.id; });
+
+            // Enter any new links at the parent's previous position.
+            const linkEnter = link.enter().insert('path', "g")
+                .attr("class", "link")
+                .style("stroke", function(d) {
+                    let current = d;
+                    while (current.depth > 1) current = current.parent;
+                    return current.data.color || "#ccc";
+                })
+                .attr('d', function(d){
+                    const o = {x: source.x0, y: source.y0}
+                    return diagonal(o, o)
+                });
+
+            // UPDATE
+            const linkUpdate = linkEnter.merge(link);
+
+            // Transition back to the parent element position
+            linkUpdate.transition()
+                .duration(duration)
+                .attr('d', function(d){ return diagonal(d, d.parent) });
+
+            // Remove any exiting links
+            const linkExit = link.exit().transition()
+                .duration(duration)
+                .attr('d', function(d) {
+                    const o = {x: source.x, y: source.y}
+                    return diagonal(o, o)
+                })
+                .remove();
+
+            // Store the old positions for transition.
+            nodes.forEach(function(d){
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+
+            // Creates a curved (diagonal) path from parent to the child nodes
+            function diagonal(s, d) {
+                path = `M ${s.y} ${s.x}
+                        C ${(s.y + d.y) / 2} ${s.x},
+                          ${(s.y + d.y) / 2} ${d.x},
+                          ${d.y} ${d.x}`
+                return path
+            }
+
+            // Toggle children on click.
+            function click(event, d) {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else {
+                    d.children = d._children;
+                    d._children = null;
+                }
+                update(d);
+            }
+        }
+    </script>
+</body>
+</html>
